@@ -18,17 +18,17 @@ PORT = int(os.environ['PORT'])
 mysql_db = MySQLDatabase(DATABASE, user=USERNAME, password=PASSWORD, host=HOST, port=PORT)
 mysql_db.connect()
 query = mysql_db.execute_sql('SELECT * FROM posicoes LIMIT 5000')
+mysql_db.close()
 
 data_list = list()
 
 for item in query:
-    timestamp = {'timestamp': item[0]}
-    ordem = {'ordem': item[1]}
-    linha = {'linha': item[2]}
-    lat = {'lat': item[3]}
-    long = {'long': item[4]}
-    velocidade = {'velocidade': item[5]}
-    registro = {**timestamp, **ordem, **linha, **lat, **long, **velocidade}
+    registro = {'timestamp': item[0],
+                'ordem': item[1],
+                'linha': item[2],
+                'lat': item[3],
+                'long': item[4],
+                'velocidade': item[5]}
     data_list.append(registro)
 
 df = pd.DataFrame(data_list)
@@ -37,7 +37,7 @@ df = df[columns]
 
 gps_data = df.copy()
 tz = pytz.timezone('America/Sao_Paulo')
-gps_data['timestamp'] = gps_data['timestamp'].apply(lambda x: datetime.datetime.fromtimestamp(x, tz=tz))
+gps_data['datetime'] = gps_data['timestamp'].apply(lambda x: datetime.datetime.fromtimestamp(x, tz=tz))
 
 #CONSULTA BBOX DO BAIRRO
 # 'bbox_east': -43.3241244, 'bbox_north': -22.8591909, 'bbox_south': -22.8830815, 'bbox_west': -43.349747}
@@ -57,4 +57,3 @@ for ordem, lat, long in zip(gps_data['ordem'].values, gps_data['lat'].values, gp
     ax.scatter(long, lat, c='red', s=100, alpha=0.3)
     ax.annotate(ordem, (long, lat))
 plt.savefig('madureira.png')
-#plt.show()
