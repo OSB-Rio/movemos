@@ -5,6 +5,7 @@ import pytz
 import matplotlib.pyplot as plt
 import pandas as pd
 import osmnx as ox
+import numpy as np
 
 from peewee import *
 
@@ -17,7 +18,7 @@ PORT = int(os.environ['PORT'])
 
 mysql_db = MySQLDatabase(DATABASE, user=USERNAME, password=PASSWORD, host=HOST, port=PORT)
 mysql_db.connect()
-query = mysql_db.execute_sql('SELECT * FROM posicoes LIMIT 5000')
+query = mysql_db.execute_sql('SELECT * FROM posicoes posicoes WHERE `LINHA` = "409"')
 mysql_db.close()
 
 data_list = list()
@@ -41,19 +42,27 @@ gps_data['datetime'] = gps_data['timestamp'].apply(lambda x: datetime.datetime.f
 
 #CONSULTA BBOX DO BAIRRO
 # 'bbox_east': -43.3241244, 'bbox_north': -22.8591909, 'bbox_south': -22.8830815, 'bbox_west': -43.349747}
-bairro_gdf = ox.gdf_from_place('Madureira, Rio de Janeiro, Rio de Janeiro, Brazil')
-bairro_latlong = {'lat': bairro_gdf[['bbox_north', 'bbox_south']].values[0],
-                  'long': bairro_gdf[['bbox_east', 'bbox_west']].values[0]}
+location_gdf = ox.gdf_from_place('Rio de Janeiro, Rio de Janeiro, Rio de Janeiro, Brazil')
+location_latlong = {'lat': location_gdf[['bbox_north', 'bbox_south']].values[0],
+                  'long': location_gdf[['bbox_east', 'bbox_west']].values[0]}
 
 # RESTRINGE OS PONTOS AO LATLONG DO BAIRRO
 for item in ['lat', 'long']:
-    gps_data = gps_data[gps_data[item].apply(lambda x: min(bairro_latlong[item]) <= x <= max(bairro_latlong[item]))]
+    gps_data = gps_data[gps_data[item].apply(lambda x: min(location_latlong[item]) <= x <= max(location_latlong[item]))]
 
-bairro_graph = ox.graph_from_place('Madureira, Rio de Janeiro, Rio de Janeiro, Brazil', network_type='drive')
-bairro_projected = ox.project_graph(bairro_graph)
+# calculate summary statistics
+data_mean, data_std = np.mean(gps_data['lat']), np.std(gps_data['lat'])
+# identify outliers
+cut_off = data_std * 3
+lower, upper = data_mean - cut_off, data_mean + cut_off
 
-fig, ax = ox.plot_graph(bairro_graph, show=False, close=False, fig_height=15, fig_width=15)
-for ordem, lat, long in zip(gps_data['ordem'].values, gps_data['lat'].values, gps_data['long'].values):
+# identify and remove outliers
+gps_data = gps_data[gps_data['lat'].apply(lambda x : lower < x < upper)]
+
+bairro_graph = ox.graph_from_place('Rio de Janeiro, Rio de Janeiro, Rio de Janeiro, Brazil', network_type='drive')
+#bairro_projected = ox.project_graph(bairro_graph)
+
+fig, ax = ox.plot_graph(bairro_graph, show=False, close=False, fig_height=45, fig_width=135)
+for lat, long in zip(gps_data['lat'].values, gps_data['long'].values):
     ax.scatter(long, lat, c='red', s=100, alpha=0.3)
-    ax.annotate(ordem, (long, lat))
-plt.savefig('madureira.png')
+plt.savefig('409.png')
