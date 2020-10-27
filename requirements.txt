@@ -13,7 +13,7 @@ click-plugins==1.0.4
 cligj==0.5.0
 cloudpickle==0.8.0
 colorcet==1.0.1
-cryptography==2.6.1
+cryptography==3.2
 cycler==0.10.0
 dask==1.1.4
 datashader==0.6.9
